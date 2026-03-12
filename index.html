@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Premium Game Center</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0a0a0c;
+            --secondary-bg: #16161a;
+            --accent-color: #00f2ff;
+            --text-main: #ffffff;
+            --text-dim: #a0a0a5;
+            --card-glass: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background: radial-gradient(circle at top right, #1a1a2e, #0a0a0c);
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--card-border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #fff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 50px 20px;
+        }
+
+        .ads-placeholder {
+            width: 100%;
+            height: 90px;
+            background: var(--secondary-bg);
+            border: 1px dashed var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 40px;
+            border-radius: 8px;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .game-card {
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+            backdrop-filter: blur(5px);
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-color);
+            box-shadow: 0 15px 30px rgba(0, 242, 255, 0.2);
+        }
+
+        .game-thumb {
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .game-info {
+            padding: 20px;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: var(--accent-color);
+        }
+
+        .game-desc {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .play-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, var(--accent-color), #0072ff);
+            color: #000;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            transition: transform 0.2s;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--accent-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            border: 1px solid var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        footer {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--card-border);
+        }
+
+        footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        /* Coming Soon Styling */
+        .coming-soon {
+            filter: grayscale(1);
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>VIBE GAME PORTAL</h1>
+        <div class="subtitle">Premium Indie Web Games Collection</div>
+    </header>
+
+    <div class="container">
+        <!-- 상단 광고 영역 (AdSense 연동 시 교체) -->
+        <div class="ads-placeholder">
+            Google AdSense 광고 영역 (상단 배너)
+        </div>
+
+        <div class="game-grid">
+            <!-- Tank Game -->
+            <div class="game-card" onclick="location.href='tank-game/index.html'">
+                <div class="game-thumb" style="background-image: url('tank-game/intro_tank.png');">
+                    <span class="badge">Hot</span>
+                </div>
+                <div class="game-info">
+                    <h2 class="game-title">Retro Tank Defense</h2>
+                    <p class="game-desc">적 탱크의 파상공세를 막아내고 기지를 지키세요. MBTI 기반의 특별한 플레이 분석까지!</p>
+                    <a href="tank-game/index.html" class="play-btn">PLAY NOW</a>
+                </div>
+            </div>
+
+            <!-- Coming Soon 1 -->
+            <div class="game-card coming-soon">
+                <div class="game-thumb" style="background-color: #333; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: #555;">?</span>
+                </div>
+                <div class="game-info">
+                    <h2 class="game-title">New Adventure</h2>
+                    <p class="game-desc">곧 새로운 명작 게임이 이곳에 찾아옵니다. 기대해 주세요!</p>
+                    <span class="play-btn" style="background: #444;">COMING SOON</span>
+                </div>
+            </div>
+
+            <!-- Coming Soon 2 -->
+            <div class="game-card coming-soon">
+                <div class="game-thumb" style="background-color: #333; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: #555;">?</span>
+                </div>
+                <div class="game-info">
+                    <h2 class="game-title">Space Shooter</h2>
+                    <p class="game-desc">광활한 우주를 배경으로 한 화끈한 액션 게임 준비 중.</p>
+                    <span class="play-btn" style="background: #444;">COMING SOON</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 광고 영역 -->
+        <div class="ads-placeholder" style="margin-top: 40px;">
+            Google AdSense 광고 영역 (하단 배너)
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Vibe Coding. All rights reserved.</p>
+        <p style="margin-top: 10px;">
+            <a href="privacy-policy.html">개인정보처리방침</a> | 
+            <a href="#">문의하기</a>
+        </p>
+    </footer>
+
+</body>
+</html>
