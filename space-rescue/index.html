@@ -190,6 +190,45 @@
             pointer-events: none;
             z-index: 300;
         }
+
+        /* 컨트롤 레이어 (모바일 조작기) */
+        #controlsLayer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 150;
+            display: none; /* 기본적으로 비활성화, 터치 감지 시 활성 */
+        }
+        .touch-button {
+            position: absolute;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        #mobileFireBtn {
+            right: 40px;
+            bottom: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 242, 255, 0.2);
+            border: 3px solid rgba(0, 242, 255, 0.6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #00f2ff;
+            font-weight: bold;
+            font-size: 1.2rem;
+            backdrop-filter: blur(5px);
+        }
+        #mobileFireBtn:active {
+            background: rgba(0, 242, 255, 0.6);
+            transform: scale(0.9);
+        }
     </style>
 </head>
 <body>
@@ -229,6 +268,11 @@
 
     <div id="damageOverlay" class="damage-overlay"></div>
     <div id="warpOverlay"></div>
+    
+    <!-- 모바일 컨트롤 레이어 -->
+    <div id="controlsLayer">
+        <div id="mobileFireBtn" class="touch-button">FIRE</div>
+    </div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -247,11 +291,84 @@
 
         // 입력 상태
         const keys = {};
+        const touchState = {
+            joystick: { active: false, identifier: null, originX: 0, originY: 0, currentX: 0, currentY: 0, force: 0, angle: 0, radius: 60 },
+            fire: false
+        };
+
         window.addEventListener('keydown', e => { 
             keys[e.key.toLowerCase()] = true; 
             if([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+            // 키보드 사용 시 컨트롤 레이어 숨김 (선택 사항이지만 깔끔함)
         });
         window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+        // 터치 이벤트 지원 여부 감지
+        function isTouchDevice() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+        }
+
+        if (isTouchDevice()) {
+            document.getElementById('controlsLayer').style.display = 'block';
+            document.querySelector('.instruction').innerText = '가상 스틱으로 이동 | 우측 버튼으로 발사';
+        }
+
+        // 터치 제어 로직
+        const fireBtn = document.getElementById('mobileFireBtn');
+        fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchState.fire = true; });
+        fireBtn.addEventListener('touchend', e => { e.preventDefault(); touchState.fire = false; });
+
+        canvas.addEventListener('touchstart', e => {
+            if (gameState !== STATE.PLAYING) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                // 화면의 왼쪽 절반을 조이스틱 영역으로 사용
+                if (t.clientX < width / 2 && !touchState.joystick.active) {
+                    touchState.joystick.active = true;
+                    touchState.joystick.identifier = t.identifier;
+                    touchState.joystick.originX = t.clientX;
+                    touchState.joystick.originY = t.clientY;
+                    touchState.joystick.currentX = t.clientX;
+                    touchState.joystick.currentY = t.clientY;
+                    touchState.joystick.force = 0;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (touchState.joystick.active && t.identifier === touchState.joystick.identifier) {
+                    const dx = t.clientX - touchState.joystick.originX;
+                    const dy = t.clientY - touchState.joystick.originY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx);
+                    const moveDist = Math.min(dist, touchState.joystick.radius);
+                    
+                    touchState.joystick.currentX = touchState.joystick.originX + Math.cos(angle) * moveDist;
+                    touchState.joystick.currentY = touchState.joystick.originY + Math.sin(angle) * moveDist;
+                    touchState.joystick.angle = angle;
+                    touchState.joystick.force = moveDist / touchState.joystick.radius;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (touchState.joystick.active && t.identifier === touchState.joystick.identifier) {
+                    touchState.joystick.active = false;
+                    touchState.joystick.identifier = null;
+                    touchState.joystick.force = 0;
+                }
+            }
+        });
+        canvas.addEventListener('touchcancel', e => {
+            touchState.joystick.active = false;
+            touchState.joystick.identifier = null;
+            touchState.joystick.force = 0;
+        });
 
         // 사운드 엔진 (Web Audio API)
         class SoundManager {
@@ -857,10 +974,19 @@
             }
             update(dt) {
                 let ax = 0; let ay = 0;
+                
+                // Keyboard Input
                 if(keys['arrowleft'] || keys['a']) ax -= this.accel;
                 if(keys['arrowright'] || keys['d']) ax += this.accel;
                 if(keys['arrowup'] || keys['w']) ay -= this.accel;
                 if(keys['arrowdown'] || keys['s']) ay += this.accel;
+                
+                // Joystick Input
+                if (touchState.joystick.active && touchState.joystick.force > 0) {
+                    ax += Math.cos(touchState.joystick.angle) * this.accel * touchState.joystick.force;
+                    ay += Math.sin(touchState.joystick.angle) * this.accel * touchState.joystick.force;
+                }
+
                 this.vx += ax * dt; this.vy += ay * dt;
                 this.vx *= this.friction; this.vy *= this.friction;
                 this.x += this.vx * dt; this.y += this.vy * dt;
@@ -870,7 +996,9 @@
                 if(this.y > height - 30) { this.y = height - 30; this.vy *= -0.5; }
                 if(this.invulTimer > 0) this.invulTimer -= dt;
                 if(this.fireCooldown > 0) this.fireCooldown -= dt;
-                if(keys[' '] && this.fireCooldown <= 0 && gameState === STATE.PLAYING) {
+                
+                // Fire Logic (Keyboard or Touch Button)
+                if((keys[' '] || touchState.fire) && this.fireCooldown <= 0 && gameState === STATE.PLAYING) {
                     this.fireCooldown = 0.12; 
                     lasers.push(new Laser(this.x - 12, this.y - 10, -20, -1800));
                     lasers.push(new Laser(this.x + 12, this.y - 10, 20, -1800));
@@ -1210,6 +1338,24 @@
             }
             if (spaceStation) spaceStation.draw(ctx);
             for(let layer of layers) layer.draw(ctx);
+
+            // 가상 조이스틱 렌더링
+            if (touchState.joystick.active) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(touchState.joystick.originX, touchState.joystick.originY, touchState.joystick.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 242, 255, 0.1)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 242, 255, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(touchState.joystick.currentX, touchState.joystick.currentY, 25, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 242, 255, 0.6)';
+                ctx.fill();
+                ctx.restore();
+            }
 
             if (gameState === STATE.PLAYING) {
                 ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 242, 255, 0.5)'; ctx.shadowColor = '#00f2ff'; ctx.shadowBlur = 15;
