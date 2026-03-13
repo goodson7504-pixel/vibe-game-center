@@ -244,7 +244,10 @@
 
         // 입력 상태
         const keys = {};
-        window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keydown', e => { 
+            keys[e.key.toLowerCase()] = true; 
+            if([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+        });
         window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
         // 사운드 엔진 (Web Audio API)
