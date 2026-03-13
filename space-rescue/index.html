@@ -11,15 +11,59 @@
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100%;
-            overflow: hidden;
             background-color: #050211;
+            color: #ccc;
             font-family: 'Orbitron', 'sans-serif';
+        }
+        #gameContainer {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+        }
+        /* SEO 매뉴얼 영역 */
+        #gameManual {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.8;
+            font-family: 'Roboto', 'Noto Sans KR', sans-serif;
+        }
+        #gameManual h2 {
+            color: #00f2ff;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        #gameManual h3 {
+            color: #fff;
+            margin-top: 25px;
+        }
+        #gameManual p {
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+        .highlight {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            background: #111;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #00f2ff;
+            border-radius: 4px;
+            font-size: 0.9rem;
         }
         
         #uiLayer {
@@ -149,6 +193,7 @@
     </style>
 </head>
 <body>
+    <div id="gameContainer">
     <div id="uiLayer">
         <h2>Operation: Return</h2>
         <div class="instruction">WASD: 이동 | Space: 발사</div>
@@ -1011,5 +1056,40 @@
         }
         updateHUD(); requestAnimationFrame(loop);
     </script>
+    </div>
+
+    <!-- SEO 및 AdSense 승인을 위한 게임 매뉴얼 섹션 -->
+    <section id="gameManual">
+        <h2>🚀 스페이스 레스큐: 오퍼레이션 리턴 (Space Rescue: Operation Return) 공식 매뉴얼</h2>
+        <p>환영합니다! <strong>스페이스 레스큐: 오퍼레이션 리턴</strong>은 광활한 우주 공간을 배경으로 한 HTML5 기반의 우주 구조 액션 게임입니다. 조난당한 우주 비행사들을 구출하고, 적대적인 외계 전투함의 공격을 피하며, 위험한 소행성 지대를 통과하는 것이 당신의 핵심 임무입니다. 별도의 설치 없이 웹 브라우저만으로 즉시 플레이할 수 있습니다.</p>
+
+        <h3>🎮 조작 방법 (Controls)</h3>
+        <p>이 게임은 PC 환경의 키보드 조작에 최적화되어 있습니다.</p>
+        <ul>
+            <li><strong>이동 (Move):</strong> 키보드의 <span class="highlight">[W], [A], [S], [D]</span> 키를 사용하여 구조 우주선을 전후좌우로 조종합니다. 우주 공간의 무중력 물리가 적용되어 관성이 작용하므로, 세밀한 조종이 요구됩니다.</li>
+            <li><strong>공격 (Fire):</strong> <span class="highlight">[Space]</span> 키를 눌러 고출력 레이저 포 2정을 동시에 발사합니다. 소행성과 외계 전투함을 파괴하는 데 사용하세요.</li>
+            <li><strong>트랙터 빔 (Tractor Beam):</strong> 조난 비행사에게 약 250px 이내로 접근하면 자동으로 트랙터 빔이 활성화됩니다. 빔이 연결된 상태에서 너무 멀어지지 않으면 비행사가 우주선으로 서서히 끌려와 구조됩니다.</li>
+        </ul>
+
+        <h3>🌌 게임 시스템</h3>
+        <ul class="feature-list">
+            <li><strong>스테이지 시스템:</strong> 각 스테이지마다 정해진 인원의 조난 비행사를 구출하면 워프 시네마틱과 함께 다음 스테이지로 진입합니다. 스테이지가 올라갈수록 적의 체력, 공격 빈도, 소행성 밀도가 증가하여 난이도가 상승합니다.</li>
+            <li><strong>실드 시스템:</strong> 우주선에는 100%의 에너지 실드가 장착되어 있습니다. 소행성 충돌이나 적의 플라즈마 레이저 피격 시 실드가 감소하며, 0%에 도달하면 미션 실패(Game Over)입니다. 비행사 구출 시 실드가 소량 회복되고, 외계 전투함 격파 시 대량 회복됩니다.</li>
+            <li><strong>외계 전투함 (Alien UFO):</strong> 스테이지 중반부터 등장하는 강력한 적입니다. 자동으로 플레이어를 추적하며 유도 플라즈마 레이저를 발사합니다. 파괴하지 않는 한 화면에서 사라지지 않으므로, 반드시 격파해야 합니다.</li>
+            <li><strong>소행성 (Asteroid):</strong> 우주 공간 곳곳에서 여러 궤도로 떠다니는 암석 장애물입니다. 레이저로 파괴하거나 회피할 수 있으며, 충돌 시 실드가 크게 감소합니다.</li>
+        </ul>
+
+        <h3>🎵 사운드 시스템</h3>
+        <p>스페이스 레스큐는 별도의 음원 파일 없이 <strong>Web Audio API</strong>를 활용한 실시간 사운드 합성 기술을 채택했습니다. 디스토션 기타 리프, 드럼 킥, 하이햇, 베이스라인으로 구성된 역동적인 배경음악(BGM)이 전투의 긴장감을 극대화합니다. 레이저 발사, 폭발, 피격 등 각 상황에 맞는 효과음(SFX)도 코드로 실시간 생성됩니다.</p>
+
+        <h3>🏆 공략 TIP</h3>
+        <ul>
+            <li><strong>우선순위를 정하세요:</strong> 외계 전투함이 등장하면 비행사 구조보다 전투함 격파를 먼저 하는 것이 유리합니다. 격파 시 실드 20%가 회복되며, 방치하면 지속 데미지로 미션 실패 확률이 높아집니다.</li>
+            <li><strong>트랙터 빔을 활용하세요:</strong> 비행사에게 완전히 밀착하지 않아도 됩니다. 약 250px 이내로 접근하여 트랙터 빔을 연결한 후, 끌려오는 동안 다른 적을 공격하거나 회피 기동을 하면 효율적입니다.</li>
+            <li><strong>관성을 이용하세요:</strong> 우주선은 무중력 물리가 적용됩니다. 한 방향으로 가속한 후 방향을 바꿔 반대로 사격하는 등의 고급 기동이 가능합니다.</li>
+        </ul>
+
+        <p>이제 출격 준비가 완료되었습니다. 화면 상단으로 스크롤을 올려 <strong>START MISSION</strong> 버튼을 눌러 미션에 투입되세요. 우주에서 떠도는 동료들이 당신의 구조를 기다리고 있습니다!</p>
+    </section>
 </body>
 </html>
