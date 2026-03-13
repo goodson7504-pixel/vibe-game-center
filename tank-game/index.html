@@ -3509,6 +3509,10 @@
                     startLevel(level + 1);
                 }
             }
+
+        // 터치 기기 여부 확인
+        function isTouchDevice() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
         }
 
         function grantRandomItem() {
@@ -3609,13 +3613,79 @@
             }
         }
 
-        canvas.addEventListener('mousedown', e => { handleInteract(e.clientX, e.clientY); handleGameClick(e.clientX, e.clientY); if (gameState !== 'playing') return; const x = e.clientX, y = e.clientY; if (x < window.innerWidth / 2 && x > artilleryButton.x + artilleryButton.radius) { joystick.active = true; joystick.originX = x; joystick.originY = y; joystick.currentX = x; joystick.currentY = y; } else if (x > window.innerWidth / 2) { const dist = Math.sqrt((x - fireButton.x) ** 2 + (y - fireButton.y) ** 2); if (dist < fireButton.radius * 1.5) { fireButton.pressed = true; tryFire(); } } });
-        canvas.addEventListener('mousemove', e => { if (gameState !== 'playing' || !joystick.active) return; const x = e.clientX, y = e.clientY, dx = x - joystick.originX, dy = y - joystick.originY, distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius), angle = Math.atan2(dy, dx); joystick.currentX = joystick.originX + Math.cos(angle) * distance; joystick.currentY = joystick.originY + Math.sin(angle) * distance; joystick.angle = angle; joystick.force = distance / joystick.radius; });
+        canvas.addEventListener('mousedown', e => { 
+            handleInteract(e.clientX, e.clientY); 
+            handleGameClick(e.clientX, e.clientY); 
+            if (gameState !== 'playing') return; 
+            const x = e.clientX, y = e.clientY; 
+            if (x < window.innerWidth / 2) { 
+                joystick.active = true; joystick.originX = x; joystick.originY = y; joystick.currentX = x; joystick.currentY = y; 
+            } else { 
+                const dist = Math.sqrt((x - fireButton.x) ** 2 + (y - fireButton.y) ** 2); 
+                if (dist < fireButton.radius * 1.5) { fireButton.pressed = true; tryFire(); } 
+            } 
+        });
+        canvas.addEventListener('mousemove', e => { 
+            if (gameState !== 'playing' || !joystick.active) return; 
+            const x = e.clientX, y = e.clientY, dx = x - joystick.originX, dy = y - joystick.originY, distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius), angle = Math.atan2(dy, dx); 
+            joystick.currentX = joystick.originX + Math.cos(angle) * distance; joystick.currentY = joystick.originY + Math.sin(angle) * distance; joystick.angle = angle; joystick.force = distance / joystick.radius; 
+        });
         canvas.addEventListener('mouseup', () => { joystick.active = false; joystick.force = 0; fireButton.pressed = false; });
 
-        canvas.addEventListener('touchstart', e => { const t = e.changedTouches[0]; handleInteract(t.clientX, t.clientY); handleGameClick(t.clientX, t.clientY); if (gameState !== 'playing') return; for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; if (t.clientX < window.innerWidth / 2 && t.clientX > artilleryButton.x + artilleryButton.radius) { joystick.id = t.identifier; joystick.active = true; joystick.originX = t.clientX; joystick.originY = t.clientY; joystick.currentX = t.clientX; joystick.currentY = t.clientY; joystick.force = 0; } else if (t.clientX > window.innerWidth / 2) { const dist = Math.sqrt((t.clientX - fireButton.x) ** 2 + (t.clientY - fireButton.y) ** 2); if (dist < fireButton.radius * 1.5) { fireButton.pressed = true; tryFire(); } } } }, { passive: false });
-        canvas.addEventListener('touchmove', e => { if (gameState !== 'playing') return; e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; if (joystick.active && t.identifier === joystick.id) { const dx = t.clientX - joystick.originX, dy = t.clientY - joystick.originY, distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius), angle = Math.atan2(dy, dx); joystick.currentX = joystick.originX + Math.cos(angle) * distance; joystick.currentY = joystick.originY + Math.sin(angle) * distance; joystick.angle = angle; joystick.force = distance / joystick.radius; } } }, { passive: false });
-        canvas.addEventListener('touchend', e => { for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; if (joystick.active && t.identifier === joystick.id) { joystick.active = false; joystick.force = 0; } else fireButton.pressed = false; } });
+        canvas.addEventListener('touchstart', e => { 
+            e.preventDefault(); // 기본 스크롤 방지
+            const t = e.changedTouches[0]; 
+            handleInteract(t.clientX, t.clientY); 
+            handleGameClick(t.clientX, t.clientY); 
+            
+            if (gameState !== 'playing') return; 
+            
+            for (let i = 0; i < e.changedTouches.length; i++) { 
+                const t = e.changedTouches[i]; 
+                // 화면 왼쪽 절반을 조이스틱 영역으로
+                if (t.clientX < window.innerWidth / 2 && !joystick.active) { 
+                    joystick.id = t.identifier; 
+                    joystick.active = true; 
+                    joystick.originX = t.clientX; 
+                    joystick.originY = t.clientY; 
+                    joystick.currentX = t.clientX; 
+                    joystick.currentY = t.clientY; 
+                    joystick.force = 0; 
+                } 
+                // 화면 오른쪽 절반을 공격/버튼 영역으로
+                else if (t.clientX >= window.innerWidth / 2) { 
+                    const dist = Math.sqrt((t.clientX - fireButton.x) ** 2 + (t.clientY - fireButton.y) ** 2); 
+                    if (dist < fireButton.radius * 2.0) { 
+                        fireButton.pressed = true; 
+                        tryFire(); 
+                    } 
+                } 
+            } 
+        }, { passive: false });
+        
+        canvas.addEventListener('touchmove', e => { 
+            if (gameState !== 'playing') return; 
+            e.preventDefault(); 
+            for (let i = 0; i < e.changedTouches.length; i++) { 
+                const t = e.changedTouches[i]; 
+                if (joystick.active && t.identifier === joystick.id) { 
+                    const dx = t.clientX - joystick.originX, dy = t.clientY - joystick.originY, distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius), angle = Math.atan2(dy, dx); 
+                    joystick.currentX = joystick.originX + Math.cos(angle) * distance; joystick.currentY = joystick.originY + Math.sin(angle) * distance; joystick.angle = angle; joystick.force = distance / joystick.radius; 
+                } 
+            } 
+        }, { passive: false });
+        
+        canvas.addEventListener('touchend', e => { 
+            for (let i = 0; i < e.changedTouches.length; i++) { 
+                const t = e.changedTouches[i]; 
+                if (joystick.active && t.identifier === joystick.id) { 
+                    joystick.active = false; joystick.force = 0; 
+                } else {
+                    const dist = Math.sqrt((t.clientX - fireButton.x) ** 2 + (t.clientY - fireButton.y) ** 2);
+                    if (dist < fireButton.radius * 2.0) fireButton.pressed = false;
+                }
+            } 
+        });
 
         window.addEventListener('keydown', e => {
             if (e.code === 'Space') { if (gameState === 'start') { initAudio(); startLevel(1); } else if (gameState === 'gameover') { initAudio(); resetGame(); } else if (gameState === 'playing') { fireButton.pressed = true; tryFire(); } } if ((e.key === 'a' || e.key === 'A') && gameState === 'playing') { e.preventDefault(); artilleryMode = !artilleryMode; if (!artilleryMode) selectedTarget = null; } if (e.key === 'Tab' && artilleryMode && gameState === 'playing') { e.preventDefault(); const currentIndex = enemies.indexOf(selectedTarget); selectedTarget = enemies[(currentIndex + 1) % enemies.length] || enemies[0]; }
@@ -3642,7 +3712,10 @@
             keys[e.key] = true;
         });
         window.addEventListener('keyup', e => { keys[e.key] = false; });
-        window.addEventListener('click', e => { if (gameState === 'start') handleInteract(e.clientX, e.clientY); });
+        window.addEventListener('click', e => { 
+            if (isTouchDevice()) return; // 터치 기기에서는 click(mousedown 호환) 무시 (touchstart에서 handleInteract 호출함)
+            if (gameState === 'start') handleInteract(e.clientX, e.clientY); 
+        });
 
         // ==================== 寃뚯엫 猷⑦봽 ====================
         function gameLoop(timestamp) {
