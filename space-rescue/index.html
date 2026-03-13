@@ -311,157 +311,150 @@
             }
             playBGM() {
                 if (!this.ctx) return;
-                if (this.bgmTimer) clearTimeout(this.bgmTimer);
-                this.thankYouToggle = 0; // 남녀 번갈아 카운터
-                
-                const bpm = 150;
-                const beat = 60 / bpm;
-                
-                // === 스타크래프트 테란 스타일: 공격적, 군사적, 하드록 ===
-                
-                // 메인 기타 리프 (E minor 파워코드 기반, 뚝뚝 끊기는 느낌)
-                const riff = [
-                    {f:164.81,d:0.25},{f:164.81,d:0.25},{f:0,d:0.25},{f:196.00,d:0.25},
-                    {f:220.00,d:0.5},{f:196.00,d:0.25},{f:164.81,d:0.25},
-                    {f:146.83,d:0.5},{f:164.81,d:0.25},{f:0,d:0.25},
-                    {f:196.00,d:0.25},{f:220.00,d:0.25},{f:246.94,d:0.5},{f:220.00,d:0.5},
-                    {f:164.81,d:0.25},{f:0,d:0.25},{f:164.81,d:0.25},{f:196.00,d:0.25},
-                    {f:220.00,d:0.5},{f:293.66,d:0.5},{f:261.63,d:0.5},{f:220.00,d:0.5},
-                    {f:196.00,d:0.5},{f:164.81,d:0.5},{f:146.83,d:0.5},{f:164.81,d:0.5}
-                ];
-                // 드럼 킥 패턴 (묵직한 저주파 펀치)
-                const kicks = [0, 1, 2.5, 4, 5, 6.5, 8, 9, 10.5, 12, 13, 14.5];
-                // 하이햇 패턴
-                const hihats = [];
-                for (let i = 0; i < 16; i++) hihats.push(i * 0.5);
-                // 파워 베이스
-                const bass = [
-                    {f:82.41,d:2},{f:82.41,d:1},{f:73.42,d:1},
-                    {f:98.00,d:2},{f:82.41,d:2},
-                    {f:73.42,d:1},{f:82.41,d:1},{f:98.00,d:1},{f:110.00,d:1},
-                    {f:98.00,d:2},{f:82.41,d:2}
-                ];
+                this.stopBGM();
+                this.nextNoteTime = this.ctx.currentTime;
+                this.currentBeat = 0;
+                this.isPlaying = true;
 
-                // 디스토션 기타 사운드
-                const playDistorted = (freq, dur, start, vol) => {
-                    if (freq === 0) return; // 쉼표
-                    const osc = this.ctx.createOscillator();
-                    const osc2 = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    const dist = this.ctx.createWaveShaper();
-                    const filter = this.ctx.createBiquadFilter();
-                    
-                    // 디스토션 커브
-                    const samples = 44100;
-                    const curve = new Float32Array(samples);
-                    for (let i = 0; i < samples; i++) {
-                        const x = (i * 2) / samples - 1;
-                        curve[i] = (Math.PI + 200) * x / (Math.PI + 200 * Math.abs(x));
+                const bpm = 150;
+                const beatDuration = 60 / bpm;
+                
+                // === Patterns (Terran Style) ===
+                const riff = [
+                    164.81, 164.81, 0, 196.00, 220.00, 220.00, 196.00, 164.81,
+                    146.83, 146.83, 164.81, 0, 196.00, 220.00, 246.94, 220.00,
+                    164.81, 164.81, 0, 196.00, 220.00, 220.00, 293.66, 261.63,
+                    220.00, 196.00, 164.81, 146.83, 164.81, 164.81, 164.81, 164.81
+                ];
+                const drumPattern = [1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0];
+                const hihatPattern = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+                const bassPattern = [82.41, 82.41, 0, 73.42, 98.00, 98.00, 82.41, 0, 73.42, 73.42, 82.41, 98.00, 110.00, 110.00, 98.00, 82.41];
+
+                const schedule = () => {
+                    while (this.nextNoteTime < this.ctx.currentTime + 0.15) {
+                        const beatIndex = this.currentBeat % 32;
+                        const shortIndex = this.currentBeat % 16;
+                        
+                        // Guitar Riff (Distorted)
+                        if (riff[beatIndex] > 0) this.playDistorted(riff[beatIndex], 0.2, this.nextNoteTime, 0.035, beatDuration);
+                        
+                        // Drums
+                        if (drumPattern[shortIndex]) this.playKick(this.nextNoteTime);
+                        if (hihatPattern[shortIndex]) this.playHihat(this.nextNoteTime);
+                        
+                        // Bass
+                        if (bassPattern[shortIndex] > 0) this.playBass(bassPattern[shortIndex], 0.4, this.nextNoteTime, beatDuration);
+                        
+                        // Pads (Every 16 beats)
+                        if (shortIndex === 0) {
+                            this.playPad(82.41, 123.47, this.nextNoteTime, beatDuration * 16);
+                        }
+
+                        this.nextNoteTime += beatDuration * 0.5; // Eighth notes
+                        this.currentBeat++;
                     }
-                    dist.curve = curve;
-                    dist.oversample = '2x';
-                    
-                    filter.type = 'lowpass';
-                    filter.frequency.setValueAtTime(1800, start);
-                    filter.Q.setValueAtTime(2, start);
-                    
-                    osc.type = 'sawtooth';
-                    osc2.type = 'square';
-                    osc.frequency.setValueAtTime(freq, start);
-                    osc2.frequency.setValueAtTime(freq * 1.005, start); // 살짝 디튠
-                    
-                    gain.gain.setValueAtTime(0, start);
-                    gain.gain.linearRampToValueAtTime(vol, start + 0.01);
-                    gain.gain.setValueAtTime(vol * 0.7, start + dur * beat * 0.3);
-                    gain.gain.exponentialRampToValueAtTime(0.001, start + dur * beat - 0.01);
-                    
-                    osc.connect(dist); osc2.connect(dist);
-                    dist.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(start); osc.stop(start + dur * beat);
-                    osc2.start(start); osc2.stop(start + dur * beat);
+                    if (this.isPlaying) this.bgmTimer = setTimeout(schedule, 50);
                 };
 
-                // 드럼 킥 사운드
-                const playKick = (start) => {
+                schedule();
+            }
+
+            stopBGM() {
+                this.isPlaying = false;
+                if (this.bgmTimer) clearTimeout(this.bgmTimer);
+            }
+
+            playDistorted(freq, dur, start, vol, beat) {
+                const osc = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const dist = this.ctx.createWaveShaper();
+                const filter = this.ctx.createBiquadFilter();
+                
+                const samples = 44100;
+                const curve = new Float32Array(samples);
+                for (let i = 0; i < samples; i++) {
+                    const x = (i * 2) / samples - 1;
+                    curve[i] = (Math.PI + 200) * x / (Math.PI + 200 * Math.abs(x));
+                }
+                dist.curve = curve;
+                dist.oversample = '2x';
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1800, start);
+                filter.Q.setValueAtTime(2, start);
+                
+                osc.type = 'sawtooth';
+                osc2.type = 'square';
+                osc.frequency.setValueAtTime(freq, start);
+                osc2.frequency.setValueAtTime(freq * 1.005, start);
+                
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(vol, start + 0.01);
+                gain.gain.setValueAtTime(vol * 0.7, start + dur * beat * 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + dur * beat - 0.01);
+                
+                osc.connect(dist); osc2.connect(dist);
+                dist.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(start); osc.stop(start + dur * beat);
+                osc2.start(start); osc2.stop(start + dur * beat);
+            }
+
+            playKick(start) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, start);
+                osc.frequency.exponentialRampToValueAtTime(30, start + 0.15);
+                gain.gain.setValueAtTime(0.35, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(start); osc.stop(start + 0.25);
+            }
+
+            playHihat(start) {
+                const src = this.ctx.createBufferSource();
+                const bufLen = this.ctx.sampleRate * 0.05;
+                const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+                src.buffer = buf;
+                const hp = this.ctx.createBiquadFilter();
+                hp.type = 'highpass'; hp.frequency.value = 7000;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.05, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.05);
+                src.connect(hp); hp.connect(gain); gain.connect(this.ctx.destination);
+                src.start(start);
+            }
+
+            playBass(freq, dur, start, beat) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                osc.type = 'square';
+                filter.type = 'lowpass'; filter.frequency.value = 300;
+                osc.frequency.setValueAtTime(freq, start);
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(0.06, start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + dur * beat - 0.02);
+                osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(start); osc.stop(start + dur * beat);
+            }
+
+            playPad(f1, f2, start, dur) {
+                [f1, f2].forEach(f => {
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(150, start);
-                    osc.frequency.exponentialRampToValueAtTime(30, start + 0.15);
-                    gain.gain.setValueAtTime(0.35, start);
-                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
-                    osc.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(start); osc.stop(start + 0.25);
-                };
-
-                // 하이햇 (노이즈 기반)
-                const playHihat = (start) => {
-                    const bufLen = this.ctx.sampleRate * 0.05;
-                    const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
-                    const d = buf.getChannelData(0);
-                    for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
-                    const src = this.ctx.createBufferSource();
-                    src.buffer = buf;
-                    const hp = this.ctx.createBiquadFilter();
-                    hp.type = 'highpass'; hp.frequency.value = 7000;
-                    const gain = this.ctx.createGain();
-                    gain.gain.setValueAtTime(0.06, start);
-                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.05);
-                    src.connect(hp); hp.connect(gain); gain.connect(this.ctx.destination);
-                    src.start(start);
-                };
-
-                // 베이스 (사각파 + 필터)
-                const playBass = (freq, dur, start) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    const filter = this.ctx.createBiquadFilter();
-                    osc.type = 'square';
-                    filter.type = 'lowpass'; filter.frequency.value = 300;
-                    osc.frequency.setValueAtTime(freq, start);
+                    osc.frequency.setValueAtTime(f, start);
                     gain.gain.setValueAtTime(0, start);
-                    gain.gain.linearRampToValueAtTime(0.06, start + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.001, start + dur * beat - 0.02);
-                    osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-                    osc.start(start); osc.stop(start + dur * beat);
-                };
-
-                const scheduleLoop = (startTime) => {
-                    if (gameState !== STATE.PLAYING && gameState !== STATE.STAGECLEAR) return;
-                    const t = startTime;
-                    
-                    // 기타 리프
-                    let rt = t;
-                    riff.forEach(n => { playDistorted(n.f, n.d, rt, 0.035); rt += n.d * beat; });
-                    
-                    // 드럼
-                    kicks.forEach(k => playKick(t + k * beat));
-                    hihats.forEach(h => playHihat(t + h * beat));
-                    
-                    // 베이스
-                    let bt2 = t;
-                    bass.forEach(n => { playBass(n.f, n.d, bt2); bt2 += n.d * beat; });
-                    
-                    // 파워 패드 (5도 화음)
-                    const padOsc = this.ctx.createOscillator();
-                    const padOsc2 = this.ctx.createOscillator();
-                    const padGain = this.ctx.createGain();
-                    padOsc.type = 'sine'; padOsc2.type = 'sine';
-                    padOsc.frequency.setValueAtTime(82.41, t); // E2
-                    padOsc2.frequency.setValueAtTime(123.47, t); // B2 (5도)
-                    padGain.gain.setValueAtTime(0.02, t);
-                    padGain.gain.setValueAtTime(0.02, t + 7 * beat);
-                    padGain.gain.exponentialRampToValueAtTime(0.001, t + 8 * beat);
-                    padOsc.connect(padGain); padOsc2.connect(padGain); padGain.connect(this.ctx.destination);
-                    padOsc.start(t); padOsc.stop(t + 8 * beat);
-                    padOsc2.start(t); padOsc2.stop(t + 8 * beat);
-
-                    const loopLen = riff.reduce((a, n) => a + n.d * beat, 0);
-                    this.bgmTimer = setTimeout(() => {
-                        scheduleLoop(this.ctx.currentTime + 0.05);
-                    }, loopLen * 1000 - 300);
-                };
-                scheduleLoop(this.ctx.currentTime + 0.05);
+                    gain.gain.linearRampToValueAtTime(0.02, start + 1.0);
+                    gain.gain.linearRampToValueAtTime(0.02, start + dur - 1.0);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(start); osc.stop(start + dur);
+                });
             }
             playThankYou() {
                 if ('speechSynthesis' in window) {
@@ -562,11 +555,11 @@
                     // 워프 연출: STAGECLEAR 상태일 때 별을 길게 늘림
                     if (gameState === STATE.STAGECLEAR) {
                         const len = (2.0 - warpTimer) * 50 * this.scrollFactor;
-                        ctx.moveTo(star.x, star.y);
-                        ctx.lineTo(star.x, star.y + len);
+                        ctx.moveTo(Math.round(star.x), Math.round(star.y));
+                        ctx.lineTo(Math.round(star.x), Math.round(star.y + len));
                     } else {
-                        ctx.moveTo(star.x, star.y);
-                        ctx.arc(star.x, star.y, this.size, 0, Math.PI*2);
+                        ctx.moveTo(Math.round(star.x), Math.round(star.y));
+                        ctx.arc(Math.round(star.x), Math.round(star.y), this.size, 0, Math.PI*2);
                     }
                 }
                 gameState === STATE.STAGECLEAR ? ctx.stroke() : ctx.fill();
@@ -600,7 +593,7 @@
                 const alpha = Math.max(0, this.life / this.maxLife);
                 ctx.globalAlpha = alpha; ctx.fillStyle = this.color;
                 ctx.shadowColor = this.color; ctx.shadowBlur = 15;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(Math.round(this.x), Math.round(this.y), this.size, 0, Math.PI*2); ctx.fill();
                 ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
             }
         }
@@ -622,7 +615,7 @@
                 const alpha = Math.max(0, this.life / this.maxLife);
                 ctx.globalAlpha = alpha; ctx.fillStyle = this.color;
                 ctx.shadowColor = this.color; ctx.shadowBlur = 10;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(Math.round(this.x), Math.round(this.y), this.size * alpha, 0, Math.PI*2); ctx.fill();
                 ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
             }
         }
@@ -637,7 +630,7 @@
             update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; }
             draw(ctx) {
                 ctx.fillStyle = '#fff'; ctx.shadowColor = this.color; ctx.shadowBlur = 15;
-                ctx.fillRect(this.x - this.width/2, this.y - this.height, this.width, this.height);
+                ctx.fillRect(Math.round(this.x - this.width/2), Math.round(this.y - this.height), this.width, this.height);
                 ctx.shadowBlur = 0;
             }
         }
@@ -654,7 +647,7 @@
             update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; }
             draw(ctx) {
                 ctx.save();
-                ctx.translate(this.x, this.y);
+                ctx.translate(Math.round(this.x), Math.round(this.y));
                 ctx.rotate(this.angle);
                 ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 15;
                 ctx.fillStyle = '#ffffff';
@@ -710,7 +703,7 @@
                 if(this.hitTimer > 0) this.hitTimer -= dt;
             }
             draw(ctx) {
-                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rotation);
+                ctx.save(); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(this.rotation);
                 let baseColor = '#1e1c26'; let strokeColor = '#ff0055';
                 if(this.hitTimer > 0) { baseColor = '#ff5555'; strokeColor = '#ff0000'; }
                 ctx.shadowColor = strokeColor; ctx.shadowBlur = 10; ctx.lineWidth = 2.5;
@@ -768,17 +761,19 @@
                 this.rotation += this.rotSpeed * dt;
             }
             draw(ctx) {
-                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rotation);
+                ctx.save(); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(this.rotation);
                 if (this.isRescuing) { ctx.shadowColor = '#00f2ff'; ctx.shadowBlur = 15; }
                 const animSpeed = this.isRescuing ? 15 : 4;
                 const armAngle = Math.sin(this.animTimer * animSpeed) * 0.6;
                 const legAngle = Math.cos(this.animTimer * animSpeed) * 0.5;
                 ctx.lineCap = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = '#e0e0e0';
                 ctx.fillStyle = '#888'; ctx.fillRect(-12, -7, 7, 14); // 산소통
+                
                 ctx.save(); ctx.translate(-3, 6); ctx.rotate(legAngle + 0.2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-2, 10); ctx.stroke(); ctx.restore();
                 ctx.save(); ctx.translate(3, 6); ctx.rotate(-legAngle - 0.2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(2, 10); ctx.stroke(); ctx.restore();
                 ctx.save(); ctx.translate(-5, -2); ctx.rotate(-armAngle - 0.5); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-10, -3); ctx.stroke(); ctx.restore();
                 ctx.save(); ctx.translate(5, -2); ctx.rotate(armAngle + 0.5); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, -3); ctx.stroke(); ctx.restore();
+                
                 ctx.fillStyle = '#f0f0f0'; ctx.beginPath(); ctx.ellipse(0, 0, 8, 10, 0, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(0, -8, 7, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(2, -8, 4.5, 0, Math.PI*2); ctx.fill();
@@ -815,7 +810,7 @@
                 }
             }
             draw(ctx) {
-                ctx.save(); ctx.translate(this.x, this.y);
+                ctx.save(); ctx.translate(Math.round(this.x), Math.round(this.y));
                 const tilt = Math.sin(this.timer * 4) * 0.1; ctx.rotate(tilt);
                 let baseColor = '#1a1f24'; let cyanGlow = '#00e5ff'; 
                 if(this.hitTimer > 0) { baseColor = '#ff5555'; cyanGlow = '#ffffff'; }
@@ -1036,8 +1031,12 @@
             }
 
             ctx.clearRect(0, 0, width, height); ctx.save();
-            if(shakeTime > 0 && gameState === STATE.PLAYING) { const mag = shakeMagnitude * (shakeTime / 0.25); ctx.translate((Math.random() - 0.5) * mag * 2, (Math.random() - 0.5) * mag * 2); }
+            if(shakeTime > 0 && gameState === STATE.PLAYING) { 
+                const mag = shakeMagnitude * (shakeTime / 0.25); 
+                ctx.translate(Math.round((Math.random() - 0.5) * mag * 2), Math.round((Math.random() - 0.5) * mag * 2)); 
+            }
             for(let layer of layers) layer.draw(ctx);
+
             if (gameState === STATE.PLAYING) {
                 ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0, 242, 255, 0.5)'; ctx.shadowColor = '#00f2ff'; ctx.shadowBlur = 15;
                 for(let ast of astronauts) { if(ast.active && ast.isRescuing) { ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(ast.x, ast.y); ctx.stroke(); } }
