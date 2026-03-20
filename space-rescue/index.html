@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Space Rescue: Operation Return</title>
     <!-- 구글 폰트 적용 -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -11,6 +11,10 @@
             margin: 0;
             padding: 0;
             width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            overscroll-behavior: none;
             background-color: #050211;
             color: #ccc;
             font-family: 'Orbitron', 'sans-serif';
@@ -229,6 +233,14 @@
             background: rgba(0, 242, 255, 0.6);
             transform: scale(0.9);
         }
+        @media (max-width: 768px) {
+            #hud { font-size: 0.8rem; padding: 10px; border-radius: 8px; }
+            #scoreBox { font-size: 1rem !important; margin-bottom: 2px !important; }
+            #shieldBarContainer { width: 80px; height: 6px; }
+            #uiLayer h2 { font-size: 1.1rem; }
+            .instruction { font-size: 0.7rem; }
+            #mobileFireBtn { width: 70px; height: 70px; right: 20px; bottom: 20px; font-size: 1rem; }
+        }
     </style>
 </head>
 <body>
@@ -315,10 +327,12 @@
 
         // 터치 제어 로직
         const fireBtn = document.getElementById('mobileFireBtn');
-        fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchState.fire = true; });
-        fireBtn.addEventListener('touchend', e => { e.preventDefault(); touchState.fire = false; });
+        fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchState.fire = true; }, { passive: false });
+        fireBtn.addEventListener('touchend', e => { e.preventDefault(); touchState.fire = false; }, { passive: false });
+        fireBtn.addEventListener('touchcancel', e => { e.preventDefault(); touchState.fire = false; }, { passive: false });
 
         canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
             if (gameState !== STATE.PLAYING) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
@@ -968,7 +982,7 @@
             constructor() {
                 this.x = width / 2; this.y = height * 0.8;
                 this.vx = 0; this.vy = 0;
-                this.accel = 2500; this.friction = 0.88;
+                this.accel = 3500; this.friction = 0.82;
                 this.fireCooldown = 0; this.color = '#00f2ff';
                 this.hp = 100; this.radius = 20; this.invulTimer = 0; 
             }

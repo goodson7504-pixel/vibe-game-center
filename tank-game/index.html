@@ -6,11 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Retro Tank Defense</title>
     <style>
-        body,
-        html {
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            touch-action: none;          /* 모든 요소에 적용 */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
             margin: 0;
             padding: 0;
             width: 100%;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;   /* 당겨서 새로고침 방지 */
             background-color: #000;
             color: #ccc;
             font-family: 'Roboto', sans-serif;
@@ -111,6 +123,25 @@
         <p>이제 출격 준비가 완료되었습니다. 화면 상단으로 스크롤을 올려 게임을 시작하고, 기지를 지켜낸 최고의 영웅이 되어보세요!</p>
     </section>
     <script>
+        // ===== [FIX #2 & #3] 전역 제스처/터치 차단 및 isMobile 식별 =====
+        document.addEventListener('touchstart',  e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        document.addEventListener('touchmove',   e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        document.addEventListener('touchend',    e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        document.addEventListener('touchcancel', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+
+        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+        // Enter 전역 스크롤 방지 로직 (브라우저 우선 순위 처리용)
+        window.addEventListener('keydown', function(e) {
+            if(e.code === 'Enter' || e.keyCode === 13) {
+                if(e.target === document.body) {
+                    e.preventDefault();
+                }
+            }
+        }, { passive: false });
+        
         window.onerror = function (msg, url, line) {
             document.getElementById('debug').innerHTML += msg + " at " + line + "<br>";
             return false;
@@ -289,8 +320,8 @@
         const hqPos = { x: 0, y: 0 }; // Will be set in generateMap or resize
 
         // ==================== ?낅젰 ?쒖뒪??====================
-        const joystick = { active: false, originX: 0, originY: 0, currentX: 0, currentY: 0, radius: 50, angle: 0, force: 0, id: null };
-        const fireButton = { x: 0, y: 0, radius: 40, pressed: false, cooldown: 0, maxCooldown: 0.5 };
+        const joystick = { active: false, id: null, originX: 0, originY: 0, currentX: 0, currentY: 0, radius: 55, angle: 0, force: 0 };
+        const fireButton = { x: 0, y: 0, radius: 50, pressed: false, id: null, cooldown: 0, maxCooldown: 0.5 };
         const artilleryButton = { x: 0, y: 0, radius: 40, cooldown: 0, maxCooldown: 5.0 };
         const rocketInventoryButton = { x: 0, y: 0, radius: 25 };
         const shieldInventoryButton = { x: 0, y: 0, radius: 25 };
@@ -1747,7 +1778,7 @@
                 if (shakeIntensity < 0) shakeIntensity = 0;
             }
 
-            const hLim = 18;
+            const hLim = TANK_SIZE / 2;
             if (gameState === 'gameover' || gameState === 'start') return;
             if (gameState === 'stage_clear') {
                 if (!waitingForRewardChoice) {
@@ -1865,7 +1896,7 @@
                 let moveX = 0, moveY = 0, isMoving = false, targetAngle = playerTank.bodyAngle;
                 if (joystick.active && joystick.force > 0.1) {
                     isMoving = true; targetAngle = joystick.angle;
-                    const ms = 150 * joystick.force;
+                    const ms = 150;
                     moveX = Math.cos(targetAngle) * ms * dt;
                     moveY = Math.sin(targetAngle) * ms * dt;
                     playerTank.bodyAngle = targetAngle;
@@ -1905,7 +1936,7 @@
                         } catch (e) { }
                     }
                 }
-                const hLim = 18;
+                const hLim = TANK_SIZE / 2;
                 playerTank.x = Math.max(mapOffsetX + hLim, Math.min(mapOffsetX + TILE_SIZE * MAP_COLS - hLim, playerTank.x));
                 playerTank.y = Math.max(mapOffsetY + hLim, Math.min(mapOffsetY + TILE_SIZE * MAP_ROWS - hLim, playerTank.y));
             }
@@ -2816,7 +2847,7 @@
                     ctx.restore();
                 }
 
-                if (!joystick.active) {
+                if (!joystick.active && window.innerWidth > 768) {
                     ctx.save();
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'top';
@@ -2826,7 +2857,7 @@
                     ctx.font = '12px Arial';
                     const commands = [
                         'WASD : MOVE',
-                        'SPACE: FIRE',
+                        'ENTER: FIRE',
                         'Q : ROCKET',
                         'F : ARTY SUPP',
                         'H : HELI SUPP',
@@ -3634,16 +3665,16 @@
         canvas.addEventListener('mouseup', () => { joystick.active = false; joystick.force = 0; fireButton.pressed = false; });
 
         canvas.addEventListener('touchstart', e => { 
-            e.preventDefault(); // 기본 스크롤 방지
-            const t = e.changedTouches[0]; 
-            handleInteract(t.clientX, t.clientY); 
-            handleGameClick(t.clientX, t.clientY); 
-            
+            if (e.cancelable) e.preventDefault(); 
+            if (e.touches.length === 1) {
+                const t0 = e.changedTouches[0]; 
+                handleInteract(t0.clientX, t0.clientY); 
+                handleGameClick(t0.clientX, t0.clientY); 
+            }
             if (gameState !== 'playing') return; 
             
             for (let i = 0; i < e.changedTouches.length; i++) { 
                 const t = e.changedTouches[i]; 
-                // 화면 왼쪽 절반을 조이스틱 영역으로
                 if (t.clientX < window.innerWidth / 2 && !joystick.active) { 
                     joystick.id = t.identifier; 
                     joystick.active = true; 
@@ -3653,11 +3684,11 @@
                     joystick.currentY = t.clientY; 
                     joystick.force = 0; 
                 } 
-                // 화면 오른쪽 절반을 공격/버튼 영역으로
                 else if (t.clientX >= window.innerWidth / 2) { 
                     const dist = Math.sqrt((t.clientX - fireButton.x) ** 2 + (t.clientY - fireButton.y) ** 2); 
-                    if (dist < fireButton.radius * 2.0) { 
+                    if (dist < fireButton.radius * 3.0) { 
                         fireButton.pressed = true; 
+                        fireButton.id = t.identifier;
                         tryFire(); 
                     } 
                 } 
@@ -3666,30 +3697,51 @@
         
         canvas.addEventListener('touchmove', e => { 
             if (gameState !== 'playing') return; 
-            e.preventDefault(); 
+            if (e.cancelable) e.preventDefault(); 
             for (let i = 0; i < e.changedTouches.length; i++) { 
                 const t = e.changedTouches[i]; 
                 if (joystick.active && t.identifier === joystick.id) { 
-                    const dx = t.clientX - joystick.originX, dy = t.clientY - joystick.originY, distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius), angle = Math.atan2(dy, dx); 
-                    joystick.currentX = joystick.originX + Math.cos(angle) * distance; joystick.currentY = joystick.originY + Math.sin(angle) * distance; joystick.angle = angle; joystick.force = distance / joystick.radius; 
+                    const dx = t.clientX - joystick.originX, dy = t.clientY - joystick.originY;
+                    const distance = Math.min(Math.sqrt(dx * dx + dy * dy), joystick.radius);
+                    const angle = Math.atan2(dy, dx); 
+                    joystick.currentX = joystick.originX + Math.cos(angle) * distance; 
+                    joystick.currentY = joystick.originY + Math.sin(angle) * distance; 
+                    joystick.angle = angle; 
+                    joystick.force = distance / joystick.radius; 
                 } 
             } 
         }, { passive: false });
         
         canvas.addEventListener('touchend', e => { 
+            if (e.cancelable) e.preventDefault();
             for (let i = 0; i < e.changedTouches.length; i++) { 
                 const t = e.changedTouches[i]; 
                 if (joystick.active && t.identifier === joystick.id) { 
-                    joystick.active = false; joystick.force = 0; 
+                    joystick.active = false; joystick.force = 0; joystick.id = null;
+                } else if (fireButton.pressed && t.identifier === fireButton.id) {
+                    fireButton.pressed = false; fireButton.id = null;
                 } else {
                     const dist = Math.sqrt((t.clientX - fireButton.x) ** 2 + (t.clientY - fireButton.y) ** 2);
-                    if (dist < fireButton.radius * 2.0) fireButton.pressed = false;
+                    if (dist < fireButton.radius * 3.0) fireButton.pressed = false;
                 }
             } 
-        });
+        }, { passive: false });
+        
+        canvas.addEventListener('touchcancel', e => { 
+            if (e.cancelable) e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) { 
+                const t = e.changedTouches[i]; 
+                if (joystick.active && t.identifier === joystick.id) { 
+                    joystick.active = false; joystick.force = 0; joystick.id = null;
+                }
+                if (fireButton.pressed && t.identifier === fireButton.id) {
+                    fireButton.pressed = false; fireButton.id = null;
+                }
+            } 
+        }, { passive: false });
 
         window.addEventListener('keydown', e => {
-            if (e.code === 'Space') { if (gameState === 'start') { initAudio(); startLevel(1); } else if (gameState === 'gameover') { initAudio(); resetGame(); } else if (gameState === 'playing') { fireButton.pressed = true; tryFire(); } } if ((e.key === 'a' || e.key === 'A') && gameState === 'playing') { e.preventDefault(); artilleryMode = !artilleryMode; if (!artilleryMode) selectedTarget = null; } if (e.key === 'Tab' && artilleryMode && gameState === 'playing') { e.preventDefault(); const currentIndex = enemies.indexOf(selectedTarget); selectedTarget = enemies[(currentIndex + 1) % enemies.length] || enemies[0]; }
+            if (e.code === 'Enter') { e.preventDefault(); if (gameState === 'start') { initAudio(); startLevel(1); } else if (gameState === 'gameover') { initAudio(); resetGame(); } else if (gameState === 'playing') { fireButton.pressed = true; tryFire(); } } if ((e.key === 'a' || e.key === 'A') && gameState === 'playing') { e.preventDefault(); artilleryMode = !artilleryMode; if (!artilleryMode) selectedTarget = null; } if (e.key === 'Tab' && artilleryMode && gameState === 'playing') { e.preventDefault(); const currentIndex = enemies.indexOf(selectedTarget); selectedTarget = enemies[(currentIndex + 1) % enemies.length] || enemies[0]; }
             if ((e.key === 'f' || e.key === 'F') && gameState === 'playing') {
                 e.preventDefault();
                 triggerArtillerySupport();

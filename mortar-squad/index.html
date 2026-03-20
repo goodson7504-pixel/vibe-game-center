@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mortar Squad: Frontier Defense</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --secondary: #ff00ff;
+            --accent: #ffeb3b;
+            --bg-dark: #0a0a0f;
+            --panel-bg: rgba(20, 20, 30, 0.85);
+            --border-color: rgba(0, 242, 255, 0.3);
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'Roboto', sans-serif; color: #fff;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        canvas {
+            display: block; touch-action: none; background: #1a1a2e;
+        }
+
+        /* --- UI Overlay Layer --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100;
+        }
+
+        /* HUD: Top Bar */
+        #hud-top {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 10px 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .stats-group { display: flex; gap: 20px; }
+        .stat-item { display: flex; align-items: center; gap: 8px; }
+        .stat-label { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: var(--primary); opacity: 0.8; }
+        .stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 700; }
+
+        #wave-info { text-align: center; }
+        #wave-number { font-size: 1.5rem; color: var(--secondary); text-shadow: 0 0 10px var(--secondary); }
+
+        /* HUD: Rank Bar */
+        #rank-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 200px; text-align: center;
+        }
+        #rank-name { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; margin-bottom: 5px; color: var(--accent); }
+        #xp-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+        #xp-bar-fill { width: 30%; height: 100%; background: var(--accent); box-shadow: 0 0 10px var(--accent); transition: width 0.3s; }
+
+        /* Menus */
+        .menu-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: auto; transition: opacity 0.5s;
+        }
+
+        #main-menu h1 {
+            font-family: 'Orbitron', sans-serif; font-size: 4rem; margin: 0;
+            background: linear-gradient(180deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 242, 255, 0.5);
+            letter-spacing: 10px; text-transform: uppercase;
+        }
+
+        .btn {
+            margin-top: 40px; padding: 15px 50px;
+            font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+            background: transparent; border: 2px solid var(--primary);
+            color: var(--primary); cursor: pointer; border-radius: 4px;
+            transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 30px var(--primary); }
+
+        .hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+
+        @media (max-width: 768px) {
+            #main-menu h1 { font-size: 2.5rem; letter-spacing: 5px; }
+            .btn { padding: 12px 30px; font-size: 1.1rem; }
+            .hud-panel { padding: 8px 15px; }
+            .stat-value { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <!-- HUD during gameplay -->
+        <div id="hud-top" class="hidden">
+            <div class="hud-panel">
+                <div id="wave-info">
+                    <div class="stat-label">CURRENT WAVE</div>
+                    <div id="wave-number">1 / 10</div>
+                </div>
+            </div>
+            
+            <div id="rank-container">
+                <div id="rank-name">PRIVATE</div>
+                <div id="xp-bar-bg"><div id="xp-bar-fill"></div></div>
+            </div>
+
+            <div class="hud-panel stats-group">
+                <div class="stat-item">
+                    <div class="stat-label">GOLD</div>
+                    <div id="gold-value" class="stat-value">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">GEMS</div>
+                    <div id="gem-value" class="stat-value">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="menu-overlay">
+            <h1>MORTAR SQUAD</h1>
+            <p style="color: var(--primary); letter-spacing: 3px; margin-top: 10px;">FRONTIER DEFENSE</p>
+            <button id="start-btn" class="btn">DEPLOY SQUAD</button>
+            <div style="margin-top: 20px; font-size: 0.8rem; color: rgba(255,255,255,0.5);">DRAG TO AIM • RELEASE TO FIRE</div>
+        </div>
+
+        <!-- Upgrade Shop -->
+        <div id="upgrade-shop" class="menu-overlay hidden">
+            <h2 style="font-family: 'Orbitron', sans-serif; color: var(--secondary);">ARMORY UPGRADE</h2>
+            <div id="shop-items" style="display: flex; flex-direction: column; gap: 15px; width: 300px; margin-top: 20px;">
+                <button class="btn-shop" data-type="damage">
+                    <span>DAMAGE</span>
+                    <span class="cost">50G</span>
+                </button>
+                <button class="btn-shop" data-type="aoe">
+                    <span>EXPLOSION AOE</span>
+                    <span class="cost">70G</span>
+                </button>
+                <button class="btn-shop" data-type="reload">
+                    <span>RELOAD SPEED</span>
+                    <span class="cost">100G</span>
+                </button>
+            </div>
+            <button id="next-wave-btn" class="btn" style="margin-top: 40px; font-size: 1rem;">NEXT WAVE</button>
+        </div>
+
+        <!-- Game Over -->
+        <div id="game-over" class="menu-overlay hidden">
+            <h1 style="color: #ff0000; text-shadow: 0 0 20px #ff0000;">BASE OVERRUN</h1>
+            <p id="final-stats" style="margin-top: 10px; color: #aaa;"></p>
+            <button id="retry-btn" class="btn">RETRY MISSION</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-shop {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 20px; background: rgba(0,0,0,0.5);
+        border: 1px solid var(--primary); color: #fff;
+        font-family: 'Orbitron', sans-serif; cursor: pointer;
+        transition: 0.3s; pointer-events: auto;
+    }
+    .btn-shop:hover { background: var(--primary); color: #000; }
+    .btn-shop .cost { color: var(--accent); }
+    .btn-shop:hover .cost { color: #000; }
+</style>
+
+<script>
+    // ==================== CONFIGURATION & STATE ====================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let gameState = 'title'; // title, playing, upgrade, gameover
+    let width, height;
+    
+    // Game Balance
+    const baseStats = {
+        damage: 10,
+        reloadSpeed: 1000,
+        aoeRange: 60,
+        maxPower: 800,
+        gravity: 600
+    };
+    
+    let playerStats = { ...baseStats };
+    let gold = 0;
+    let gems = 0;
+    let wave = 1;
+    let xp = 0;
+
+    // Input & Aiming
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let currentDrag = { x: 0, y: 0 };
+    let aimAngle = -Math.PI / 2;
+    let aimPower = 0;
+
+    // View & Effects
+    let shake = 0;
+
+    // Entities
+    let projectiles = [];
+    let enemies = [];
+    let particles = [];
+
+    // ==================== INITIALIZATION ====================
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ==================== INPUT HANDLERS ====================
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+
+    canvas.addEventListener('touchstart', (e) => handleStart(e.touches[0]));
+    canvas.addEventListener('touchmove', (e) => handleMove(e.touches[0]));
+    window.addEventListener('touchend', () => handleEnd());
+
+    function handleStart(e) {
+        if (gameState !== 'playing') return;
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+    }
+
+    function handleMove(e) {
+        if (!isDragging) return;
+        currentDrag = { x: e.clientX, y: e.clientY };
+        
+        const dx = dragStart.x - currentDrag.x;
+        const dy = dragStart.y - currentDrag.y;
+        
+        aimAngle = Math.atan2(dy, dx);
+        aimPower = Math.min(Math.sqrt(dx*dx + dy*dy) * 2.5, playerStats.maxPower);
+    }
+
+    function handleEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        fireMortar();
+    }
+
+    function fireMortar() {
+        if (aimPower < 50) return; // Too weak
+        
+        const startX = width / 2;
+        const startY = height - 100;
+        
+        projectiles.push({
+            x: startX,
+            y: startY,
+            vx: Math.cos(aimAngle) * aimPower,
+            vy: Math.sin(aimAngle) * aimPower,
+            radius: 8,
+            color: '#fff'
+        });
+        
+        // Slight recoil shake
+        shake = Math.min(shake + 5, 10);
+        
+        aimPower = 0; // Reset
+    }
+
+    // ==================== UI HANDLERS ====================
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('retry-btn').addEventListener('click', () => {
+        document.getElementById('game-over').classList.add('hidden');
+        startGame();
+    });
+    document.getElementById('next-wave-btn').addEventListener('click', () => {
+        document.getElementById('upgrade-shop').classList.add('hidden');
+        startWave();
+    });
+
+    document.querySelectorAll('.btn-shop').forEach(btn => {
+        btn.addEventListener('click', () => handleUpgrade(btn.dataset.type));
+    });
+
+    function handleUpgrade(type) {
+        const costs = { damage: 50, aoe: 70, reload: 100 };
+        const cost = costs[type];
+        if (gold >= cost) {
+            gold -= cost;
+            if (type === 'damage') playerStats.damage += 5;
+            if (type === 'aoe') playerStats.aoeRange += 15;
+            if (type === 'reload') playerStats.reloadSpeed = Math.max(200, playerStats.reloadSpeed - 150);
+            updateUI();
+            saveGame();
+        }
+    }
+
+    function startGame() {
+        gameState = 'playing';
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('game-over').classList.add('hidden');
+        document.getElementById('hud-top').classList.remove('hidden');
+        initGameWorld();
+    }
+
+    function gameOver() {
+        gameState = 'gameover';
+        document.getElementById('game-over').classList.remove('hidden');
+        document.getElementById('final-stats').innerText = `YOU REACHED WAVE ${wave}`;
+    }
+
+    // ==================== GAME WORLD ====================
+    let waveInProgress = false;
+    let enemiesToSpawn = 0;
+    let spawnTimer = 0;
+
+    function initGameWorld() {
+        projectiles = [];
+        enemies = [];
+        particles = [];
+        shake = 0;
+        gold = 0;
+        wave = 1;
+        updateUI();
+        startWave();
+    }
+
+    function startWave() {
+        waveInProgress = true;
+        enemiesToSpawn = 5 + (wave * 2);
+        spawnTimer = 0;
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('wave-number').innerText = `${wave} / ${wave + 10}`;
+        document.getElementById('gold-value').innerText = gold;
+    }
+
+    // ==================== CORE LOOP ====================
+    let lastTime = performance.now();
+    function loop(time) {
+        const dt = (time - lastTime) / 1000;
+        lastTime = time;
+
+        update(dt);
+        draw();
+        
+        requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+        if (gameState !== 'playing') return;
+
+        // Wave Management
+        if (waveInProgress) {
+            spawnTimer -= dt;
+            if (spawnTimer <= 0 && enemiesToSpawn > 0) {
+                spawnEnemy();
+                enemiesToSpawn--;
+                spawnTimer = 1.0 + Math.max(0.2, 2.0 - wave * 0.1);
+            }
+            if (enemiesToSpawn === 0 && enemies.length === 0) {
+                waveInProgress = false;
+                wave++;
+                openUpgradeShop();
+            }
+        }
+
+        // Projectile Physics
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const p = projectiles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += playerStats.gravity * dt;
+
+            if (p.y > height - 40) {
+                createExplosion(p.x, height - 40);
+                projectiles.splice(i, 1);
+            }
+        }
+
+        // Enemy AI & Physics
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const e = enemies[i];
+            const targetX = width / 2;
+            const dirX = e.x < targetX ? 1 : -1;
+            
+            const dist = Math.abs(e.x - targetX);
+            if (dist > 80) {
+                e.x += dirX * e.speed * dt;
+                e.walkCycle += dt * 10;
+            } else {
+                gameOver();
+                return;
+            }
+            
+            if (e.hp <= 0) {
+                gold += 15 + wave * 2;
+                updateUI();
+                createDebris(e.x, e.y - 10);
+                enemies.splice(i, 1);
+            }
+        }
+
+        // Particle Physics
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += (p.gravity || 0) * dt;
+            p.age += dt;
+            p.size *= (1 - 0.5 * dt);
+
+            if (p.age > p.maxAge) {
+                particles.splice(i, 1);
+            }
+        }
+
+        if (shake > 0) shake -= dt * 20;
+    }
+
+    function spawnEnemy() {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const startX = side === 1 ? -50 : width + 50;
+        const isHeavy = wave > 3 && Math.random() > 0.7;
+        
+        enemies.push({
+            x: startX,
+            y: height - 40,
+            hp: (20 + wave * 5) * (isHeavy ? 3 : 1),
+            maxHp: (20 + wave * 5) * (isHeavy ? 3 : 1),
+            speed: (35 + Math.random() * 25) * (isHeavy ? 0.6 : 1),
+            walkCycle: 0,
+            side: side,
+            type: isHeavy ? 'heavy' : 'default',
+            scale: isHeavy ? 1.5 : 1.0,
+            recoil: 0
+        });
+    }
+
+    function createExplosion(x, y) {
+        shake = 15;
+        enemies.forEach(e => {
+            const dist = Math.abs(e.x - x);
+            if (dist < playerStats.aoeRange) {
+                const damageMult = 1 - (dist / (playerStats.aoeRange * 1.5));
+                e.hp -= playerStats.damage * damageMult * 10;
+            }
+        });
+
+        // Particles
+        for (let i = 0; i < 20; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 100 + Math.random() * 200;
+            particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 50, gravity: 200, size: 10, age:0, maxAge:0.8, color: `hsl(${20+Math.random()*20}, 100%, 50%)` });
+        }
+    }
+
+    function createDebris(x, y) {
+        for (let i = 0; i < 5; i++) {
+            particles.push({ x, y, vx: (Math.random()-0.5)*100, vy: - Math.random()*150, gravity: 300, size: 4, age:0, maxAge:1.0, color: '#444' });
+        }
+    }
+
+    function draw() {
+        ctx.save();
+        if (shake > 0) {
+            ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+        }
+        
+        ctx.clearRect(0, 0, width, height);
+        drawEnvironment();
+        
+        if (gameState === 'playing') {
+            if (isDragging) drawTrajectory();
+            drawMortar();
+            drawEntities();
+            drawEffects();
+        }
+        ctx.restore();
+    }
+
+    function drawEnvironment() {
+        const grad = ctx.createLinearGradient(0, 0, 0, height);
+        grad.addColorStop(0, '#020205');
+        grad.addColorStop(1, '#0f0c29');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Stars
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < 50; i++) {
+            const size = Math.random() * 2;
+            const x = (Math.sin(i) * 0.5 + 0.5) * width;
+            const y = (Math.cos(i * 1.5) * 0.5 + 0.5) * (height * 0.6);
+            ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 1000 + i);
+            ctx.fillRect(x, y, size, size);
+        }
+        ctx.globalAlpha = 1;
+
+        // Distant Mountains (Static for now)
+        ctx.fillStyle = '#050510';
+        ctx.beginPath();
+        ctx.moveTo(0, height - 40);
+        ctx.lineTo(width * 0.1, height - 150);
+        ctx.lineTo(width * 0.25, height - 80);
+        ctx.lineTo(width * 0.4, height - 200);
+        ctx.lineTo(width * 0.6, height - 120);
+        ctx.lineTo(width * 0.8, height - 180);
+        ctx.lineTo(width, height - 40);
+        ctx.fill();
+
+        // Ground
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, height - 40, width, 40);
+        ctx.strokeStyle = varColor('--primary', 0.1);
+        ctx.strokeRect(0, height - 40, width, 1);
+    }
+
+    function drawTrajectory() {
+        const startX = width / 2;
+        const startY = height - 100;
+        const points = 40;
+        const timeStep = 0.08;
+        
+        ctx.beginPath();
+        ctx.setLineDash([5, 8]);
+        ctx.strokeStyle = varColor('--primary', 0.5);
+        ctx.lineWidth = 2;
+
+        let lastX = startX, lastY = startY;
+
+        for (let i = 0; i < points; i++) {
+            const t = i * timeStep;
+            const x = startX + Math.cos(aimAngle) * aimPower * t;
+            const y = startY + Math.sin(aimAngle) * aimPower * t + 0.5 * playerStats.gravity * t * t;
+            
+            if (y > height - 40) {
+                // Draw impact X
+                drawImpactMarker(x, height - 40);
+                break;
+            }
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            
+            lastX = x; lastY = y;
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    function drawImpactMarker(x, y) {
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = varColor('--secondary', 1);
+        ctx.lineWidth = 3;
+        const s = 10;
+        ctx.beginPath();
+        ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
+        ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
+        ctx.stroke();
+        
+        // Pulse circle
+        ctx.beginPath();
+        const pulse = 10 + Math.sin(Date.now() / 100) * 5;
+        ctx.arc(x, y, pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawMortar() {
+        const cx = width / 2;
+        const cy = height - 100;
+        
+        // Base structure
+        ctx.save();
+        ctx.translate(cx, cy);
+        
+        // Support legs
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(-40, 40); ctx.lineTo(0, 0); ctx.lineTo(40, 40);
+        ctx.stroke();
+
+        // Pivot point shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill();
+
+        // Barrel
+        ctx.rotate(isDragging ? aimAngle : -Math.PI / 2);
+        
+        // Shading grad for barrel
+        const grad = ctx.createLinearGradient(0, -15, 0, 15);
+        grad.addColorStop(0, '#777');
+        grad.addColorStop(0.5, '#444');
+        grad.addColorStop(1, '#222');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-10, -12, 70, 24); 
+        
+        // Reinforcing rings
+        ctx.fillStyle = '#222';
+        ctx.fillRect(10, -14, 5, 28);
+        ctx.fillRect(40, -14, 5, 28);
+
+        // Muzzle end
+        ctx.fillStyle = varColor('--primary');
+        ctx.fillRect(65, -16, 5, 32);
+
+        ctx.restore();
+    }
+
+    function drawEntities() {
+        // Draw Enemies
+        enemies.forEach(e => {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            
+            const scale = e.scale || 1.0;
+            ctx.scale(scale, scale);
+
+            if (e.recoil > 0) {
+                ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
+                e.recoil -= 1;
+            }
+
+            // Body
+            const bob = Math.sin(e.walkCycle) * 3;
+            ctx.fillStyle = e.side === 1 ? (e.type === 'heavy' ? '#2a3d13' : '#4a5d23') : (e.type === 'heavy' ? '#3d1313' : '#5d2323');
+            ctx.fillRect(-12, -24 + bob, 24, 24);
+            
+            // Head
+            ctx.fillStyle = '#d2b48c';
+            ctx.fillRect(-8, -34 + bob, 16, 10);
+            
+            // Helmet
+            ctx.fillStyle = e.type === 'heavy' ? '#111' : '#333';
+            ctx.fillRect(-10, -36 + bob, 20, 6);
+
+            // Health Bar (Draw outside of scale for consistent size or keep within for feedback)
+            ctx.restore();
+            
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            const barW = 30 * scale;
+            const healthPct = e.hp / e.maxHp;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(-barW/2, -45 * scale, barW, 4);
+            ctx.fillStyle = healthPct > 0.3 ? '#00ff00' : '#ff0000';
+            ctx.fillRect(-barW/2, -45 * scale, barW * healthPct, 4);
+            ctx.restore();
+        });
+
+        // Draw Projectiles
+        projectiles.forEach(p => {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
+            
+            // Trail
+            if (Math.random() > 0.5) {
+                particles.push({
+                    x: p.x, y: p.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+                    size: 3, age: 0, maxAge: 0.3, color: 'rgba(255,255,255,0.2)'
+                });
+            }
+        });
+    }
+
+    function drawEffects() {
+        particles.forEach(p => {
+            const alpha = 1 - (p.age / p.maxAge);
+            ctx.globalAlpha = Math.max(0, alpha);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    // ==================== UPGRADE & PERSISTENCE ====================
+    function openUpgradeShop() {
+        document.getElementById('upgrade-shop').classList.remove('hidden');
+        saveGame();
+    }
+
+    function saveGame() {
+        const data = { gold, wave, playerStats };
+        localStorage.setItem('mortarSquad_save', JSON.stringify(data));
+    }
+
+    function loadGame() {
+        const saved = localStorage.getItem('mortarSquad_save');
+        if (saved) {
+            const data = JSON.parse(saved);
+            gold = data.gold;
+            wave = data.wave;
+            playerStats = data.playerStats;
+            updateUI();
+        }
+    }
+
+    // Helper: CSS Variable to Color
+    function varColor(name, alpha = 1) {
+        const color = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        if (alpha === 1) return color;
+        if (color.startsWith('#')) {
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return color; 
+    }
+
+    // Start rendering
+    requestAnimationFrame(loop); 
+
+    console.log("Mortar Squad Core v0.1 Engine Ready");
+
+</script>
+</body>
+</html>
